@@ -562,66 +562,129 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebas
 	  reader.readAsArrayBuffer(file);
 	};
 
+	// SALVAR COTAÇÃO E ABRIR MODAL DE AVISO NO WHATSAPP
 	window.saveNewQuote = async function() {
 	  if (!currentUser) {
-		const saved = localStorage.getItem("session_user");
-		if (saved) currentUser = JSON.parse(saved);
+	    const saved = localStorage.getItem("session_user");
+	    if (saved) currentUser = JSON.parse(saved);
 	  }
-
+	
 	  if (!currentUser) {
-		showAlert("Sessão expirada. Faça login novamente.", true);
-		setTimeout(() => { logout(); }, 2000);
-		return;
+	    showAlert("Sessão expirada. Faça login novamente.", true);
+	    setTimeout(() => { logout(); }, 2000);
+	    return;
 	  }
-
+	
 	  const title = document.getElementById("quote-title").value.trim();
 	  const deadline = document.getElementById("quote-deadline").value;
-
+	
 	  if (!title || !deadline) {
-		showAlert("Por favor, preencha o título e a data limite.", true);
-		return;
+	    showAlert("Por favor, preencha o título e a data limite.", true);
+	    return;
 	  }
-
+	
 	  const rows = document.querySelectorAll(".quote-item-row");
 	  const items = [];
-
+	
 	  rows.forEach((tr, index) => {
-		const code = tr.querySelector(".item-code").value.trim();
-		const name = tr.querySelector(".item-name").value.trim();
-		const qty = parseFloat(tr.querySelector(".item-qty").value) || 1;
-
-		if (name) {
-		  items.push({ id: 'item_' + index, code: code || `COD-${index+1}`, name, qty });
-		}
+	    const code = tr.querySelector(".item-code").value.trim();
+	    const name = tr.querySelector(".item-name").value.trim();
+	    const qty = parseFloat(tr.querySelector(".item-qty").value) || 1;
+	
+	    if (name) {
+	      items.push({ id: 'item_' + index, code: code || `COD-${index+1}`, name, qty });
+	    }
 	  });
-
+	
 	  if (items.length === 0) {
-		showAlert("Adicione ao menos um produto válido.", true);
-		return;
+	    showAlert("Adicione ao menos um produto válido.", true);
+	    return;
 	  }
-
+	
 	  const newQuote = {
-		title,
-		deadline,
-		status: 'open',
-		buyerId: currentUser.id || 'admin_geral',
-		buyerName: currentUser.name || 'Administrador',
-		buyerCompany: currentUser.company || 'Supermercado Júpiter',
-		buyerEmail: currentUser.email || 'admin@supermercado.com',
-		items,
-		proposals: {},
-		createdAt: new Date().toISOString()
+	    title,
+	    deadline,
+	    status: 'open',
+	    buyerId: currentUser.id || 'admin_geral',
+	    buyerName: currentUser.name || 'Administrador',
+	    buyerCompany: currentUser.company || 'Supermercado Júpiter',
+	    buyerEmail: currentUser.email || 'admin@supermercado.com',
+	    items,
+	    proposals: {},
+	    createdAt: new Date().toISOString()
 	  };
-
+	
 	  try {
-		await addDoc(collection(db, "quotes"), newQuote);
-		showAlert("Cotação salva e disponibilizada!");
-		closeNewQuoteModal();
+	    await addDoc(collection(db, "quotes"), newQuote);
+	    showAlert("Cotação salva e publicada com sucesso!");
+	    closeNewQuoteModal();
+	    
+	    // Abre o modal para disparar as mensagens para os vendedores cadastrados
+	    openWhatsAppNotifyModal(title, deadline);
 	  } catch (err) {
-		console.error("Erro ao salvar cotação:", err);
-		showAlert("Erro ao criar cotação: " + err.message, true);
+	    console.error("Erro ao salvar cotação:", err);
+	    showAlert("Erro ao criar cotação: " + err.message, true);
 	  }
 	};
+
+// ABRIR MODAL DE NOTIFICAÇÃO VIA WHATSAPP
+window.openWhatsAppNotifyModal = function(quoteTitle, deadlineStr) {
+  const container = document.getElementById("whatsapp-sellers-list");
+  
+  // Filtra apenas os usuários que possuem perfil de 'vendedor' na lista global
+  const sellers = usersList.filter(u => u.role === 'vendedor');
+
+  if (sellers.length === 0) {
+    container.innerHTML = `
+      <div class="p-4 text-center text-gray-500 text-xs">
+        Nenhum vendedor cadastrado no sistema para notificar. (Você pode cadastrar vendedores no painel de Administrador).
+      </div>
+    `;
+  } else {
+    const formattedDate = new Date(deadlineStr).toLocaleString('pt-BR');
+    
+    container.innerHTML = sellers.map(s => {
+      // Limpa o telefone para deixar apenas números para o link wa.me
+      const cleanPhone = s.phone ? s.phone.replace(/\D/g, '') : '';
+      
+      const message = encodeURIComponent(
+        `Olá *${s.name}* (${s.company}),\n\n` +
+        `Nova cotação aberta no *${currentUser.company}*:\n` +
+        `📋 *${quoteTitle}*\n` +
+        `⏰ *Prazo Limite:* ${formattedDate}\n\n` +
+        `Acesse o sistema para enviar sua proposta!`
+      );
+
+      const whatsappUrl = cleanPhone ? `https://wa.me/55${cleanPhone}?text=${message}` : '#';
+      const hasPhone = cleanPhone.length >= 10;
+
+      return `
+        <div class="flex items-center justify-between p-3 bg-gray-50 border rounded-xl">
+          <div>
+            <h5 class="font-bold text-gray-800 text-xs">${s.company}</h5>
+            <p class="text-[11px] text-gray-500">${s.name} • ${s.phone || 'Sem telefone'}</p>
+          </div>
+          <div>
+            ${hasPhone ? `
+              <a href="${whatsappUrl}" target="_blank" class="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white font-semibold text-xs rounded-lg flex items-center gap-1.5 shadow transition-colors">
+                <i data-lucide="message-circle" class="w-3.5 h-3.5"></i> Enviar WhatsApp
+              </a>
+            ` : `
+              <span class="text-[10px] bg-gray-200 text-gray-600 px-2 py-1 rounded">Tel. Inválido</span>
+            `}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  document.getElementById("modal-whatsapp-notify").classList.remove("hidden");
+  lucide.createIcons();
+};
+
+window.closeWhatsAppNotifyModal = function() {
+  document.getElementById("modal-whatsapp-notify").classList.add("hidden");
+};
 
 	// ABRIR MODAL VENDEDOR (COM BLOQUEIO SE ENCERRADA)
 	window.openSellerModal = function(quoteId) {
