@@ -652,7 +652,8 @@ window.openWhatsAppNotifyModal = function(quoteTitle, deadlineStr) {
         `Nova cotação aberta no *${currentUser.company}*:\n` +
         `📋 *${quoteTitle}*\n` +
         `⏰ *Prazo Limite:* ${formattedDate}\n\n` +
-        `Acesse o sistema para enviar sua proposta!`
+        `Acesse o sistema para enviar sua proposta!\n\n` +
+		`https://gustavocanni.github.io/cotacaojupiter`
       );
 
       const whatsappUrl = cleanPhone ? `https://wa.me/55${cleanPhone}?text=${message}` : '#';
