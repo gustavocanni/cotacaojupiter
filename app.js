@@ -46,7 +46,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebas
 	  }
 	}
 
-	updateStatusIndicator(true, "Conectado ao Firebase Cloud");
+	updateStatusIndicator(true, "Conectado");
 
 	function showAlert(msg, isError = false) {
 	  const banner = document.getElementById("alert-banner");
