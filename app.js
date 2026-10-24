@@ -653,7 +653,7 @@ window.openWhatsAppNotifyModal = function(quoteTitle, deadlineStr) {
         `📋 *${quoteTitle}*\n` +
         `⏰ *Prazo Limite:* ${formattedDate}\n\n` +
         `Acesse o sistema para enviar sua proposta!\n\n` +
-		`https://gustavocanni.github.io/cotacaojupiter`
+		`https://cotacaojupiter.web.app/`
       );
 
       const whatsappUrl = cleanPhone ? `https://wa.me/55${cleanPhone}?text=${message}` : '#';
